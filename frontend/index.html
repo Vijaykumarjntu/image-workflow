@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pear Media Studio</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #333;
+        }
+        .workflow {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .card h2 {
+            margin-bottom: 15px;
+            color: #555;
+            font-size: 1.3rem;
+        }
+        textarea, input[type="file"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+        textarea {
+            min-height: 100px;
+            font-family: monospace;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-right: 10px;
+            margin-top: 10px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .result {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+        }
+        .image-grid {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+        .image-grid img {
+            max-width: 150px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .enhanced-area {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+        .status {
+            font-size: 12px;
+            color: #666;
+            margin-top: 10px;
+        }
+        .loading {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border: 2px solid #fff;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        @media (max-width: 768px) {
+            .workflow {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎨 Pear Media Studio</h1>
+        
+        <div class="workflow">
+            <!-- Text Workflow -->
+            <div class="card">
+                <h2>📝 Text → Image Workflow</h2>
+                <textarea id="prompt" placeholder="Enter your prompt... e.g., a cat sitting on a couch"></textarea>
+                <button id="enhanceBtn">✨ Enhance Prompt</button>
+                
+                <div id="enhancedSection" style="display: none;">
+                    <div class="enhanced-area">
+                        <strong>Enhanced Prompt:</strong>
+                        <p id="enhancedText" style="margin-top: 8px;"></p>
+                        <button id="approveBtn" style="background: #28a745;">✅ Approve & Generate Image</button>
+                        <button id="rejectBtn" style="background: #6c757d;">✖️ Reject</button>
+                    </div>
+                </div>
+                
+                <div class="result">
+                    <strong>Generated Image:</strong>
+                    <div id="generatedImage" class="image-grid"></div>
+                    <div id="textStatus" class="status"></div>
+                </div>
+            </div>
+            
+            <!-- Image Workflow -->
+            <div class="card">
+                <h2>🖼️ Image → Variations Workflow</h2>
+                <input type="file" id="imageFile" accept="image/*">
+                <button id="analyzeBtn">🔍 Analyze & Generate Variations</button>
+                
+                <div class="result">
+                    <strong>Analysis:</strong>
+                    <p id="analysisResult" style="margin: 10px 0; font-size: 14px; color: #555;"></p>
+                    
+                    <strong>Variations:</strong>
+                    <div id="variations" class="image-grid"></div>
+                    <div id="variationStatus" class="status"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8000/api';
+        
+        // Text workflow
+        let currentEnhanced = '';
+        
+        document.getElementById('enhanceBtn').onclick = async () => {
+            const prompt = document.getElementById('prompt').value;
+            if (!prompt) {
+                alert('Please enter a prompt');
+                return;
+            }
+            
+            const btn = document.getElementById('enhanceBtn');
+            btn.disabled = true;
+            btn.innerHTML = 'Enhancing... <span class="loading"></span>';
+            
+            try {
+                const response = await fetch(`${API_BASE}/enhance-text`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt })
+                });
+                
+                const data = await response.json();
+                currentEnhanced = data.enhanced;
+                
+                document.getElementById('enhancedText').innerText = currentEnhanced;
+                document.getElementById('enhancedSection').style.display = 'block';
+                document.getElementById('textStatus').innerHTML = `✨ Enhanced with ${data.api_used}`;
+            } catch (error) {
+                alert('Error: ' + error.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '✨ Enhance Prompt';
+            }
+        };
+        
+        document.getElementById('approveBtn').onclick = async () => {
+            if (!currentEnhanced) return;
+            
+            const btn = document.getElementById('approveBtn');
+            btn.disabled = true;
+            btn.innerHTML = 'Generating... <span class="loading"></span>';
+            
+            try {
+                const response = await fetch(`${API_BASE}/generate-image`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt: currentEnhanced })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    const img = document.createElement('img');
+                    img.src = data.image_url;
+                    document.getElementById('generatedImage').innerHTML = '';
+                    document.getElementById('generatedImage').appendChild(img);
+                    document.getElementById('textStatus').innerHTML = `✅ Generated with ${data.api_used}`;
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '✅ Approve & Generate Image';
+            }
+        };
+        
+        document.getElementById('rejectBtn').onclick = () => {
+            document.getElementById('enhancedSection').style.display = 'none';
+            currentEnhanced = '';
+        };
+        
+        // Image workflow
+        document.getElementById('analyzeBtn').onclick = async () => {
+            const file = document.getElementById('imageFile').files[0];
+            if (!file) {
+                alert('Please select an image');
+                return;
+            }
+            
+            const btn = document.getElementById('analyzeBtn');
+            btn.disabled = true;
+            btn.innerHTML = 'Processing... <span class="loading"></span>';
+            
+            try {
+                // Step 1: Analyze image
+                const formData = new FormData();
+                formData.append('file', file);
+                
+                const analysisRes = await fetch(`${API_BASE}/analyze-image`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const analysis = await analysisRes.json();
+                document.getElementById('analysisResult').innerHTML = `
+                    📸 ${analysis.analysis}<br>
+                    🎨 Detected style: ${analysis.style}
+                `;
+                
+                // Step 2: Generate variations
+                const variationForm = new FormData();
+                variationForm.append('file', file);
+                variationForm.append('style', analysis.style);
+                
+                const variationRes = await fetch(`${API_BASE}/generate-variations`, {
+                    method: 'POST',
+                    body: variationForm
+                });
+                
+                const variations = await variationRes.json();
+                
+                if (variations.success) {
+                    const gallery = document.getElementById('variations');
+                    gallery.innerHTML = '';
+                    variations.variations.forEach(url => {
+                        const img = document.createElement('img');
+                        img.src = url;
+                        gallery.appendChild(img);
+                    });
+                    document.getElementById('variationStatus').innerHTML = `✅ Generated ${variations.count} variations`;
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '🔍 Analyze & Generate Variations';
+            }
+        };
+    </script>
+</body>
+</html>
